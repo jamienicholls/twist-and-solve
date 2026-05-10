@@ -1,17 +1,22 @@
-# Rubik’s Cube Solver — Specification (v1.0)
+# Rubik's Cube Solver & Learning App — Specification (v1.1)
 
 ## 1. Overview
 
-This project is a Rubik’s Cube solver built with Flutter + Dart, using Spec‑Driven Development (SDD).
+This project implements a full Rubik's Cube domain model, solver, scramble
+generator, and a teaching-oriented UI. The system is built using
+Spec‑Driven Development (SDD): each feature is defined as a task (Dx),
+implemented in isolation, and validated with tests.
 
 Goals:
-- Represent a 3×3 Rubik’s Cube in code.
+- Represent a 3×3 Rubik's Cube in code.
 - Validate cube states.
 - Solve valid cube states deterministically.
 - Provide a UI to edit, validate, and solve a cube.
 - Support step‑by‑step playback of the solution.
+- Guide the user through solving via a structured teaching mode.
 
-The spec is the single source of truth. All implementation work must reference specific tasks in this document.
+The spec is the single source of truth.  
+All implementation work must reference specific tasks in this document.
 
 ---
 
@@ -22,28 +27,28 @@ The spec is the single source of truth. All implementation work must reference s
 - A standard 3×3 Rubik’s Cube with 6 faces.
 - Faces: U (up), D (down), L (left), R (right), F (front), B (back).
 - Each face has 9 stickers (3×3).
-- Colours are abstracted as enums or string identifiers (e.g. WHITE, YELLOW, RED, ORANGE, BLUE, GREEN).
+- Colours are abstracted as enums or identifiers (WHITE, YELLOW, RED, ORANGE, BLUE, GREEN).
 
 Constraints:
-- The cube representation must be:
-    - Immutable or treated immutably (operations return new instances).
-    - Serializable (to/from JSON or a simple map structure).
+- Representation must be:
+  - Immutable (operations return new instances).
+  - Serializable (JSON or simple map structure).
 
 ### 2.2 Moves
 
 - Basic face turns:
-    - U, D, L, R, F, B
-    - With modifiers: normal (90° clockwise), prime (counter‑clockwise), double (180°).
+  - U, D, L, R, F, B
+  - Modifiers: clockwise, counter‑clockwise (prime), double (180°)
 - Internal representation:
-    - A move type (U, D, L, R, F, B).
-    - A rotation (clockwise, counter‑clockwise, double).
+  - MoveFace (U, D, L, R, F, B)
+  - MoveRotation (cw, ccw, double)
 
 ### 2.3 Scramble
 
 - A scramble is a sequence of moves.
 - Must be:
-    - Valid (no impossible tokens).
-    - Reasonably constrained in length (e.g. 20–30 moves for random scrambles).
+  - Valid (no illegal tokens).
+  - Reasonably constrained in length (e.g. 20–30 moves).
 
 ---
 
@@ -52,20 +57,19 @@ Constraints:
 ### 3.1 Cube Representation (D1)
 
 - Represent a 3×3 cube with:
-    - 6 faces.
-    - 9 stickers per face.
+  - 6 faces.
+  - 9 stickers per face.
 - Provide:
-    - A way to construct:
-        - A solved cube.
-        - A cube from a given state (e.g. from UI input).
-    - A way to inspect:
-        - Individual faces.
-        - Individual stickers.
+  - A solved cube constructor.
+  - A constructor from a provided state.
+  - Methods to inspect faces and stickers.
 
 Acceptance criteria:
 - Can create a solved cube.
 - Can create a cube from a provided state structure.
 - Can read back faces and stickers deterministically.
+
+---
 
 ### 3.2 Move Application (D2)
 
@@ -73,44 +77,95 @@ Acceptance criteria:
 - Apply a sequence of moves to a cube and return a new cube.
 
 Acceptance criteria:
-- Applying a known sequence to a solved cube yields the expected state (to be defined in tests).
-- Applying the inverse sequence returns the cube to solved state.
+- Known sequences produce expected states.
+- Applying a move followed by its inverse returns to solved.
 
-### 3.3 State Validation (D3)
+---
 
-- Validate whether a given cube state is:
-    - Structurally valid (correct counts of each colour).
-    - Potentially solvable (basic checks; full group‑theory validation not required in v1).
+### 3.3 Cube UI (D3)
+
+Goal:  
+Provide a simple 2D visualisation of the cube for debugging, manual testing, and verifying D1–D2 behaviour.
+
+Requirements:
+1. Display all 6 faces in a fixed 2D layout:
+
+       [ U ]
+   [ L ][ F ][ R ][ B ]
+       [ D ]
+
+2. Each face is a 3×3 grid of coloured squares.
+3. Colours must match `CubeColour`.
+4. UI must update when moves are applied.
+5. Provide buttons for all 18 basic moves:
+   - U, D, L, R, F, B
+   - U’, D’, L’, R’, F’, B’
+   - U2, D2, L2, R2, F2, B2
+6. Provide a “Reset” button.
+7. UI must use only:
+   - Cube
+   - Move
+   - applyMove
+   - applyMoves
+8. No animations in v1.
+9. No 3D rendering in v1.
+10. Implemented in Flutter using Material widgets.
 
 Acceptance criteria:
-- Invalid colour counts are rejected.
-- Obvious impossible states are rejected (e.g. too many of one colour).
+- UI rebuilds after moves.
+- Reset restores solved state.
+- Move buttons produce domain‑equivalent results.
+- Layout reflects cube state accurately.
+
+---
+
+### 3.4 State Validation (D4)
+
+- Validate whether a cube state is:
+  - Structurally valid (correct colour counts).
+  - Potentially solvable (basic checks only).
+
+Acceptance criteria:
+- Invalid colour counts rejected.
+- Impossible states rejected.
 - Valid states pass.
 
-### 3.4 Solver (D4)
+---
 
-- Given a valid cube state, compute a solution sequence of moves.
-- v1 may use:
-    - A simple layer‑by‑layer or beginner‑style algorithm.
-    - Not necessarily optimal, but must:
-        - Always solve valid states within a reasonable move count.
-        - Be deterministic for the same input.
+### 3.5 Solver (D5)
+
+Goal:  
+Compute a deterministic solution sequence for a valid cube.
+
+Requirements:
+- Use a simple beginner‑style method in v1.
+- Must:
+  - Always solve valid states.
+  - Be deterministic.
+- Solver must output:
+  - A flat move list.
+  - A structured breakdown for teaching mode (D7).
 
 Acceptance criteria:
-- For a set of known scrambles, solver returns a sequence that solves the cube when applied.
-- Solver returns an error or failure state if the cube is invalid or unsolvable.
+- Known scrambles are solved correctly.
+- Invalid or unsolvable cubes return an error.
 
-### 3.5 Scramble Generator (D5)
+---
+
+### 3.6 Scramble Generator (D6)
 
 - Generate a random scramble sequence.
-- Constraints:
-    - No redundant immediate inverses (e.g. R followed by R’).
-    - Reasonable length (configurable, with a default).
+
+Constraints:
+- No immediate inverses (R then R’).
+- No same‑face repeats (R then R2).
+- Configurable length.
+- Must use MoveFace + MoveRotation.
 
 Acceptance criteria:
-- Generated scrambles are syntactically valid.
-- Applying a scramble to a solved cube yields a non‑solved state.
-- Applying the solver to that state returns the cube to solved.
+- Scrambles are syntactically valid.
+- Scrambling a solved cube yields a non‑solved state.
+- Solver can solve the scrambled cube.
 
 ---
 
@@ -118,32 +173,17 @@ Acceptance criteria:
 
 ### 4.1 Use Cases
 
-#### A1 — Validate Cube State
-
-Input:
-- Cube state (from UI).
-
-Output:
-- Valid / invalid.
-- If invalid, a list of validation errors.
+#### A1 — Validate Cube
+Input: cube state  
+Output: valid/invalid + errors
 
 #### A2 — Solve Cube
-
-Input:
-- Cube state.
-
-Output:
-- Either:
-    - A solution sequence of moves, or
-    - An error (invalid or unsolvable).
+Input: cube state  
+Output: solution sequence or error
 
 #### A3 — Generate Scramble
-
-Input:
-- Optional length parameter.
-
-Output:
-- A scramble sequence.
+Input: optional length  
+Output: scramble sequence
 
 ---
 
@@ -152,83 +192,64 @@ Output:
 ### 5.1 Screens
 
 #### U1 — Cube Editor Screen
-
-- Visual representation of the cube.
-- Ability to:
-    - Select a face.
-    - Set sticker colours.
-- Actions:
-    - Validate cube.
-    - Solve cube.
-    - Reset to solved.
-    - Apply random scramble.
+- Visual cube representation
+- Set sticker colours
+- Validate, solve, reset, scramble
 
 #### U2 — Validation Feedback
-
-- Show validation result:
-    - Success: “Cube is valid.”
-    - Failure: list of issues (e.g. “Too many RED stickers”).
+- Show validation success or list of errors
 
 #### U3 — Solver Playback
-
-- After solving:
-    - Show the solution as a list of moves.
-    - Allow step‑by‑step playback:
-        - Next / previous move.
-        - Optional auto‑play.
+- Show solution list
+- Step‑by‑step playback
+- Next / previous / auto‑play
 
 ---
 
 ## 6. Non‑Functional Requirements
 
-- All domain logic (core) must be:
-    - Pure Dart.
-    - Free of Flutter imports.
-- Deterministic behaviour:
-    - Same input → same output.
-- Testable:
-    - Unit tests for domain.
-    - Basic integration tests for application layer.
+- Domain logic must be pure Dart.
+- Deterministic behaviour.
+- Fully testable (unit + integration).
 
 ---
 
 ## 7. Tasks
 
 ### Domain (D)
-
-- D1 — Cube representation
-- D2 — Move application
-- D3 — State validation
-- D4 — Solver implementation
-- D5 — Scramble generator
+- D1 — Cube representation  
+- D2 — Move application  
+- D3 — Cube UI  
+- D4 — State validation  
+- D5 — Solver  
+- D6 — Scramble generator  
+- D7 — Teaching mode  
 
 ### Application (A)
-
-- A1 — Validate cube use case
-- A2 — Solve cube use case
-- A3 — Generate scramble use case
+- A1 — Validate cube  
+- A2 — Solve cube  
+- A3 — Generate scramble  
 
 ### UI (U)
-
-- U1 — Cube editor screen
-- U2 — Validation feedback
-- U3 — Solver playback UI
+- U1 — Cube editor  
+- U2 — Validation feedback  
+- U3 — Solver playback  
 
 ---
 
 ## 8. Out of Scope (v1)
 
-- Optimal solving (e.g. Kociemba, Thistlethwaite).
-- Performance optimisation for very low‑end devices.
-- 2×2, 4×4, or other cube sizes.
-- Online features or cloud sync.
+- Optimal solving (Kociemba, Thistlethwaite)
+- Performance optimisation
+- Other cube sizes (2×2, 4×4, etc.)
+- Online features or cloud sync
 
 ---
 
 ## 9. Notes for Implementation
 
-- All work must reference a specific task ID (e.g. D1, D2, U1).
+- All work must reference a task ID (e.g., D1, D2, U1).
 - If implementation reveals missing details:
-    - Pause.
-    - Propose a spec update.
-    - Get approval before changing behaviour.
+  - Pause
+  - Propose a spec update
+  - Get approval before changing behaviour
