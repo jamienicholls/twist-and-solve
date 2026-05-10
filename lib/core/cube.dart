@@ -93,7 +93,7 @@ class Cube {
     final reps = switch (move.rotation) {
       MoveRotation.cw => 1,
       MoveRotation.ccw => 3,
-      MoveRotation.double => 2,
+      MoveRotation.half => 2,
     } *
         times;
     var cube = this;

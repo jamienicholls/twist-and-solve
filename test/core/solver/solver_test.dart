@@ -82,7 +82,7 @@ void main() {
         Move(MoveFace.R, MoveRotation.ccw),
         Move(MoveFace.U, MoveRotation.ccw),
         Move(MoveFace.F, MoveRotation.cw),
-        Move(MoveFace.R, MoveRotation.double),
+        Move(MoveFace.R, MoveRotation.half),
       ];
       final cube = scramble(scrambleMoves);
       final result = CubeSolver.solve(cube);

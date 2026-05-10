@@ -80,17 +80,13 @@ void main() {
       final cube = Cube.fromState(allWhite);
       final result = CubeValidator.validate(cube);
       expect(result.isValid, isFalse);
-      // white appears 54 times; the other 5 colours appear 0 times.
-      expect(result.errors.length, 6);
+      // 6 colour-count errors (white=54, yellow/red/orange/blue/green=0)
+      // + 5 centre-uniqueness errors (faces D,L,R,F,B all share white with U)
+      expect(result.errors.length, 11);
     });
 
     test('two colours swapped produces exactly two errors', () {
-      // Swap one white (U,0) with one yellow (D,0).
-      final cube = _buildInvalidCube({
-        (Face.U, 0): CubeColour.yellow,
-        (Face.D, 0): CubeColour.white,
-      });
-      // Both white and yellow still have 9 each → still valid!
+      // Both white and yellow still have 9 each after a direct swap → still valid!
       // Use a swap that breaks counts: replace white with green.
       final cube2 = _buildInvalidCube({(Face.U, 0): CubeColour.green});
       final result = CubeValidator.validate(cube2);
@@ -100,7 +96,28 @@ void main() {
       expect(result.errors.any((e) => e.contains('green')), isTrue);
     });
 
-    test('error messages mention colour name and count', () {
+    test('swapping a corner and a centre keeps counts equal but is rejected', () {
+      // Replace red corner (R, 0) with yellow, and yellow centre (D, 4) with red.
+      // Colour counts remain 9 each, but D's centre is now red — invalid.
+      final cube = _buildInvalidCube({
+        (Face.R, 0): CubeColour.yellow,
+        (Face.D, 4): CubeColour.red,
+      });
+      final result = CubeValidator.validate(cube);
+      expect(result.isValid, isFalse,
+          reason: 'Duplicate centre colour should be rejected');
+      expect(result.errors.any((e) => e.contains('red')), isTrue);
+    });
+
+    test('duplicate centre colour on two faces is rejected', () {
+      // Replace the green centre (F, 4) with white — now two faces have white centres.
+      final cube = _buildInvalidCube({(Face.F, 4): CubeColour.white});
+      final result = CubeValidator.validate(cube);
+      expect(result.isValid, isFalse);
+      expect(result.errors.any((e) => e.toLowerCase().contains('centre')), isTrue);
+    });
+
+    test('error message includes the incorrect count', () {
       final cube = _buildInvalidCube({(Face.U, 0): CubeColour.red});
       final result = CubeValidator.validate(cube);
       // white should now appear 8 times, red 10 times.

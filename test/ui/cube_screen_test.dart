@@ -91,7 +91,7 @@ void main() {
       await tester.tap(find.byKey(const ValueKey('btn_U2')));
       await tester.pump();
 
-      final expected = Cube.solved().applyMove(Move(MoveFace.U, MoveRotation.double));
+      final expected = Cube.solved().applyMove(Move(MoveFace.U, MoveRotation.half));
 
       for (final face in Face.values) {
         for (var i = 0; i < 9; i++) {

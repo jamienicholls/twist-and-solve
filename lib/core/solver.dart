@@ -218,22 +218,22 @@ class CubeSolver {
   static const _allMoves = [
     Move(MoveFace.U, MoveRotation.cw),
     Move(MoveFace.U, MoveRotation.ccw),
-    Move(MoveFace.U, MoveRotation.double),
+    Move(MoveFace.U, MoveRotation.half),
     Move(MoveFace.D, MoveRotation.cw),
     Move(MoveFace.D, MoveRotation.ccw),
-    Move(MoveFace.D, MoveRotation.double),
+    Move(MoveFace.D, MoveRotation.half),
     Move(MoveFace.L, MoveRotation.cw),
     Move(MoveFace.L, MoveRotation.ccw),
-    Move(MoveFace.L, MoveRotation.double),
+    Move(MoveFace.L, MoveRotation.half),
     Move(MoveFace.R, MoveRotation.cw),
     Move(MoveFace.R, MoveRotation.ccw),
-    Move(MoveFace.R, MoveRotation.double),
+    Move(MoveFace.R, MoveRotation.half),
     Move(MoveFace.F, MoveRotation.cw),
     Move(MoveFace.F, MoveRotation.ccw),
-    Move(MoveFace.F, MoveRotation.double),
+    Move(MoveFace.F, MoveRotation.half),
     Move(MoveFace.B, MoveRotation.cw),
     Move(MoveFace.B, MoveRotation.ccw),
-    Move(MoveFace.B, MoveRotation.double),
+    Move(MoveFace.B, MoveRotation.half),
   ];
 
   // Opposite-face pairs — these faces commute, so we enforce an ordering

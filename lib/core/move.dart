@@ -9,8 +9,8 @@ enum MoveRotation {
   /// 90° counter-clockwise (prime).
   ccw,
 
-  /// 180°.
-  double,
+  /// 180° (half turn).
+  half,
 }
 
 /// A single Rubik's Cube move: a face and a rotation.
@@ -27,8 +27,8 @@ class Move {
         return Move(face, MoveRotation.ccw);
       case MoveRotation.ccw:
         return Move(face, MoveRotation.cw);
-      case MoveRotation.double:
-        return Move(face, MoveRotation.double);
+      case MoveRotation.half:
+        return Move(face, MoveRotation.half);
     }
   }
 
@@ -40,7 +40,7 @@ class Move {
         return faceName;
       case MoveRotation.ccw:
         return "$faceName'";
-      case MoveRotation.double:
+      case MoveRotation.half:
         return '${faceName}2';
     }
   }

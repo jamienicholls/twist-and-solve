@@ -1,29 +1,28 @@
 import 'package:flutter/material.dart';
 import 'package:twist_and_solve/core/cube.dart';
-import 'package:twist_and_solve/core/face.dart';
 import 'package:twist_and_solve/core/move.dart';
-import 'face_grid.dart';
+import 'widgets/cube_layout.dart';
 
 /// All 18 moves with their display labels.
 const _moves = <(String, Move)>[
   ('U', Move(MoveFace.U, MoveRotation.cw)),
   ("U'", Move(MoveFace.U, MoveRotation.ccw)),
-  ('U2', Move(MoveFace.U, MoveRotation.double)),
+  ('U2', Move(MoveFace.U, MoveRotation.half)),
   ('D', Move(MoveFace.D, MoveRotation.cw)),
   ("D'", Move(MoveFace.D, MoveRotation.ccw)),
-  ('D2', Move(MoveFace.D, MoveRotation.double)),
+  ('D2', Move(MoveFace.D, MoveRotation.half)),
   ('L', Move(MoveFace.L, MoveRotation.cw)),
   ("L'", Move(MoveFace.L, MoveRotation.ccw)),
-  ('L2', Move(MoveFace.L, MoveRotation.double)),
+  ('L2', Move(MoveFace.L, MoveRotation.half)),
   ('R', Move(MoveFace.R, MoveRotation.cw)),
   ("R'", Move(MoveFace.R, MoveRotation.ccw)),
-  ('R2', Move(MoveFace.R, MoveRotation.double)),
+  ('R2', Move(MoveFace.R, MoveRotation.half)),
   ('F', Move(MoveFace.F, MoveRotation.cw)),
   ("F'", Move(MoveFace.F, MoveRotation.ccw)),
-  ('F2', Move(MoveFace.F, MoveRotation.double)),
+  ('F2', Move(MoveFace.F, MoveRotation.half)),
   ('B', Move(MoveFace.B, MoveRotation.cw)),
   ("B'", Move(MoveFace.B, MoveRotation.ccw)),
-  ('B2', Move(MoveFace.B, MoveRotation.double)),
+  ('B2', Move(MoveFace.B, MoveRotation.half)),
 ];
 
 class CubeScreen extends StatefulWidget {
@@ -57,7 +56,7 @@ class _CubeScreenState extends State<CubeScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _CubeLayout(cube: _cube),
+            CubeLayout(cube: _cube),
             const SizedBox(height: 24),
             _MoveButtons(onMove: _applyMove),
             const SizedBox(height: 16),
@@ -69,55 +68,6 @@ class _CubeScreenState extends State<CubeScreen> {
           ],
         ),
       ),
-    );
-  }
-}
-
-/// The 2D cross layout:
-///        [ U ]
-///  [ L ][ F ][ R ][ B ]
-///        [ D ]
-class _CubeLayout extends StatelessWidget {
-  final Cube cube;
-
-  const _CubeLayout({required this.cube});
-
-  @override
-  Widget build(BuildContext context) {
-    const cellSize = 28.0;
-    // Each face is 3 cells wide (plus margins): 3*(cellSize+2) = 90px per face.
-    const faceWidth = 3 * (cellSize + 2);
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // Row 1: U centred above F (offset by one face width).
-        Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const SizedBox(width: faceWidth),
-            LabelledFace(cube: cube, face: Face.U, cellSize: cellSize),
-          ],
-        ),
-        // Row 2: L F R B side by side.
-        Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            LabelledFace(cube: cube, face: Face.L, cellSize: cellSize),
-            LabelledFace(cube: cube, face: Face.F, cellSize: cellSize),
-            LabelledFace(cube: cube, face: Face.R, cellSize: cellSize),
-            LabelledFace(cube: cube, face: Face.B, cellSize: cellSize),
-          ],
-        ),
-        // Row 3: D under F.
-        Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const SizedBox(width: faceWidth),
-            LabelledFace(cube: cube, face: Face.D, cellSize: cellSize),
-          ],
-        ),
-      ],
     );
   }
 }

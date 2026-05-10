@@ -21,8 +21,8 @@ void main() {
     });
 
     test('inverse of double is double', () {
-      final m = Move(MoveFace.F, MoveRotation.double);
-      expect(m.inverse, Move(MoveFace.F, MoveRotation.double));
+      final m = Move(MoveFace.F, MoveRotation.half);
+      expect(m.inverse, Move(MoveFace.F, MoveRotation.half));
     });
 
     test('equality and hashCode', () {
@@ -35,7 +35,7 @@ void main() {
     test('toString formatting', () {
       expect(Move(MoveFace.R, MoveRotation.cw).toString(), 'R');
       expect(Move(MoveFace.U, MoveRotation.ccw).toString(), "U'");
-      expect(Move(MoveFace.F, MoveRotation.double).toString(), 'F2');
+      expect(Move(MoveFace.F, MoveRotation.half).toString(), 'F2');
     });
   });
 
@@ -62,7 +62,7 @@ void main() {
 
   group('Move followed by inverse returns to solved', () {
     for (final face in MoveFace.values) {
-      for (final rot in [MoveRotation.cw, MoveRotation.ccw, MoveRotation.double]) {
+      for (final rot in [MoveRotation.cw, MoveRotation.ccw, MoveRotation.half]) {
         test('${Move(face, rot)} then inverse', () {
           final move = Move(face, rot);
           final cube = Cube.solved().applyMove(move).applyMove(move.inverse);
@@ -79,7 +79,7 @@ void main() {
   group('Double move equals two CW moves', () {
     for (final face in MoveFace.values) {
       test('$face double', () {
-        final double2 = Cube.solved().applyMove(Move(face, MoveRotation.double));
+        final double2 = Cube.solved().applyMove(Move(face, MoveRotation.half));
         final twice = Cube.solved()
             .applyMove(Move(face, MoveRotation.cw))
             .applyMove(Move(face, MoveRotation.cw));
@@ -114,7 +114,7 @@ void main() {
         Move(MoveFace.R, MoveRotation.cw),
         Move(MoveFace.U, MoveRotation.cw),
         Move(MoveFace.F, MoveRotation.ccw),
-        Move(MoveFace.L, MoveRotation.double),
+        Move(MoveFace.L, MoveRotation.half),
         Move(MoveFace.D, MoveRotation.ccw),
         Move(MoveFace.B, MoveRotation.cw),
       ];
