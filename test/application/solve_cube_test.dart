@@ -4,6 +4,7 @@ import 'package:twist_and_solve/core/cube.dart';
 import 'package:twist_and_solve/core/cube_colour.dart';
 import 'package:twist_and_solve/core/face.dart';
 import 'package:twist_and_solve/core/move.dart';
+import 'package:twist_and_solve/core/scramble_generator.dart';
 
 // Known short scramble — within IDA* phase depth limits.
 const _trigger = [
@@ -60,6 +61,28 @@ void main() {
           state = state.applyMoves(stage.moves);
         }
         expect(state, equals(Cube.solved()));
+      });
+
+      test('known-scramble fast path solves a longer scramble', () {
+        final scramble = ScrambleGenerator.generate(length: 20);
+        final cube = Cube.solved().applyMoves(scramble);
+        final result = SolveCube.executeWithKnownScramble(cube, scramble);
+        expect(result, isA<SolveCubeSuccess>());
+
+        final success = result as SolveCubeSuccess;
+        final solved = cube.applyMoves(success.solveResult.moves);
+        expect(solved, equals(Cube.solved()));
+      });
+
+      test('known-scramble fast path falls back when cube does not match hint', () {
+        final hint = ScrambleGenerator.generate(length: 12);
+        final cube = Cube.solved().applyMoves(_trigger);
+        final result = SolveCube.executeWithKnownScramble(cube, hint);
+        expect(result, isA<SolveCubeSuccess>());
+
+        final success = result as SolveCubeSuccess;
+        final solved = cube.applyMoves(success.solveResult.moves);
+        expect(solved, equals(Cube.solved()));
       });
     });
 

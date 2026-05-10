@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:twist_and_solve/core/cube.dart';
 import 'package:twist_and_solve/core/cube_colour.dart';
+import 'package:twist_and_solve/core/cube_validator.dart';
 import 'package:twist_and_solve/core/face.dart';
 import 'package:twist_and_solve/core/move.dart';
 import 'package:twist_and_solve/core/solver.dart';
@@ -141,6 +142,46 @@ void main() {
       };
       final cube = Cube.fromState(allWhite);
       expect(() => CubeSolver.solve(cube), throwsArgumentError);
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // Complex manual cube (user submission)
+  // ---------------------------------------------------------------------------
+
+  group('Complex manual cubes', () {
+    late Cube userCube;
+
+    setUpAll(() {
+      // Layout:
+      //     wgw
+      //     wwr
+      //     wgw
+      // rbr|bwb|owo|gyg
+      // ooo|ggg|rrr|bbb
+      // bbr|yoy|bwo|grr
+      //    gyo
+      //    yyo
+      //    yyy
+      final state = {
+        Face.U: [CubeColour.white, CubeColour.green, CubeColour.white, CubeColour.white, CubeColour.white, CubeColour.red, CubeColour.white, CubeColour.green, CubeColour.white],
+        Face.L: [CubeColour.red, CubeColour.blue, CubeColour.red, CubeColour.orange, CubeColour.orange, CubeColour.orange, CubeColour.blue, CubeColour.blue, CubeColour.red],
+        Face.F: [CubeColour.blue, CubeColour.white, CubeColour.blue, CubeColour.green, CubeColour.green, CubeColour.green, CubeColour.yellow, CubeColour.orange, CubeColour.yellow],
+        Face.R: [CubeColour.orange, CubeColour.white, CubeColour.orange, CubeColour.red, CubeColour.red, CubeColour.red, CubeColour.blue, CubeColour.white, CubeColour.orange],
+        Face.B: [CubeColour.green, CubeColour.yellow, CubeColour.green, CubeColour.blue, CubeColour.blue, CubeColour.blue, CubeColour.green, CubeColour.red, CubeColour.red],
+        Face.D: [CubeColour.green, CubeColour.yellow, CubeColour.orange, CubeColour.yellow, CubeColour.yellow, CubeColour.orange, CubeColour.yellow, CubeColour.yellow, CubeColour.yellow],
+      };
+      userCube = Cube.fromState(state);
+    });
+
+    test('user cube passes basic validation checks', () {
+      final validation = CubeValidator.validate(userCube);
+      expect(validation.isValid, true,
+          reason: 'cube should pass colour/count validation: ${validation.errors}');
+    });
+
+    test('solver fails fast on user cube instead of hanging', () {
+      expect(() => CubeSolver.solve(userCube), throwsStateError);
     });
   });
 }

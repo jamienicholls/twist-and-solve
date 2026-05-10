@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart' show compute;
 import 'package:flutter/material.dart';
 import 'package:twist_and_solve/application/generate_scramble.dart';
@@ -26,6 +28,7 @@ class EditorScreen extends StatefulWidget {
 class _EditorScreenState extends State<EditorScreen> {
   final Map<Face, List<CubeColour>> _state = _solvedState();
   (Face, int)? _selected;
+  List<Move>? _lastScramble;
   bool _isSolving = false;
 
   static Map<Face, List<CubeColour>> _solvedState() => {
@@ -42,16 +45,21 @@ class _EditorScreenState extends State<EditorScreen> {
   void _onColourPicked(CubeColour colour) {
     final sel = _selected;
     if (sel == null) return;
-    setState(() => _state[sel.$1]![sel.$2] = colour);
+    setState(() {
+      _state[sel.$1]![sel.$2] = colour;
+      _lastScramble = null;
+    });
   }
 
   void _scramble() {
-    final scrambled = _cube.applyMoves(GenerateScramble.execute());
+    final scrambleMoves = GenerateScramble.executeSolverCompatible();
+    final scrambled = Cube.solved().applyMoves(scrambleMoves);
     setState(() {
       for (final f in Face.values) {
         _state[f] = List<CubeColour>.of(scrambled.face(f));
       }
       _selected = null;
+      _lastScramble = scrambleMoves;
     });
   }
 
@@ -62,6 +70,7 @@ class _EditorScreenState extends State<EditorScreen> {
         _state[f] = solved[f]!;
       }
       _selected = null;
+      _lastScramble = null;
     });
   }
 
@@ -102,13 +111,42 @@ class _EditorScreenState extends State<EditorScreen> {
     final cube = _cube;
     setState(() => _isSolving = true);
 
-    compute(SolveCube.execute, cube)
-        .timeout(
-          const Duration(seconds: 30),
-          onTimeout: () =>
-              SolveCubeFailure('Solve timed out — the cube may be unsolvable.'),
-        )
-        .then((result) {
+    // Fast path: if this is exactly the last scramble-generated state, solve
+    // by inverting that scramble rather than running an expensive search.
+    final scrambleHint = _lastScramble;
+    if (scrambleHint != null) {
+      final hintedResult = SolveCube.executeWithKnownScramble(cube, scrambleHint);
+      if (hintedResult case SolveCubeSuccess()) {
+        if (!mounted) return;
+        setState(() => _isSolving = false);
+        onSuccess(cube, hintedResult);
+        return;
+      }
+    }
+
+    // Show solving dialog and run solver in background.
+    bool dialogDismissed = false;
+    final computeFuture = compute(SolveCube.execute, cube);
+    
+    showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => _SolvingDialog(
+        onCancel: () {
+          dialogDismissed = true;
+          Navigator.pop(context);
+        },
+      ),
+    );
+
+    computeFuture.then((result) {
+      if (!mounted || dialogDismissed) {
+        if (!mounted) return;
+        setState(() => _isSolving = false);
+        return;
+      }
+      // Close the solving dialog
+      if (mounted) Navigator.pop(context);
       if (!mounted) return;
       setState(() => _isSolving = false);
       switch (result) {
@@ -129,6 +167,28 @@ class _EditorScreenState extends State<EditorScreen> {
             ),
           );
       }
+    }).catchError((e) {
+      if (!mounted || dialogDismissed) {
+        if (!mounted) return;
+        setState(() => _isSolving = false);
+        return;
+      }
+      if (mounted) Navigator.pop(context);
+      if (!mounted) return;
+      setState(() => _isSolving = false);
+      showDialog(
+        context: context,
+        builder: (_) => AlertDialog(
+          title: const Text('Solving Error'),
+          content: Text('An unexpected error occurred: $e'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('OK'),
+            ),
+          ],
+        ),
+      );
     });
   }
 
@@ -188,8 +248,10 @@ class _ColourPicker extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
+    return Wrap(
+      alignment: WrapAlignment.center,
+      spacing: 8,
+      runSpacing: 8,
       children: [
         for (final colour in CubeColour.values)
           GestureDetector(
@@ -198,7 +260,6 @@ class _ColourPicker extends StatelessWidget {
             child: Container(
               width: 36,
               height: 36,
-              margin: const EdgeInsets.symmetric(horizontal: 4),
               decoration: BoxDecoration(
                 color: stickerColor(colour),
                 border: Border.all(color: Colors.black54),
@@ -257,6 +318,68 @@ class _ActionButtons extends StatelessWidget {
           key: const ValueKey('btn_reset'),
           onPressed: onReset,
           child: const Text('Reset'),
+        ),
+      ],
+    );
+  }
+}
+
+/// Dialog showing solving progress with elapsed time and cancel button.
+class _SolvingDialog extends StatefulWidget {
+  final VoidCallback onCancel;
+
+  const _SolvingDialog({required this.onCancel});
+
+  @override
+  State<_SolvingDialog> createState() => _SolvingDialogState();
+}
+
+class _SolvingDialogState extends State<_SolvingDialog> {
+  late final Stopwatch _stopwatch;
+  late final Timer _updateTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    _stopwatch = Stopwatch()..start();
+    // Update elapsed time every 100ms
+    _updateTimer = Timer.periodic(
+      const Duration(milliseconds: 100),
+      (_) {
+        if (mounted) setState(() {});
+      },
+    );
+  }
+
+  @override
+  void dispose() {
+    _updateTimer.cancel();
+    _stopwatch.stop();
+    super.dispose();
+  }
+
+  String get _elapsedTime {
+    final seconds = (_stopwatch.elapsedMilliseconds / 1000).toStringAsFixed(1);
+    return seconds;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Solving...'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const SizedBox(height: 16),
+          const CircularProgressIndicator(),
+          const SizedBox(height: 16),
+          Text('Elapsed time: ${_elapsedTime}s'),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: widget.onCancel,
+          child: const Text('Cancel'),
         ),
       ],
     );

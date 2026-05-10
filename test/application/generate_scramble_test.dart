@@ -44,5 +44,22 @@ void main() {
       final scrambled = Cube.solved().applyMoves(moves);
       expect(scrambled, isNot(equals(Cube.solved())));
     });
+
+    test('solver-compatible scramble can be solved by the current solver', () {
+      for (var seed = 0; seed < 5; seed++) {
+        final moves = GenerateScramble.executeSolverCompatible(
+          length: 2,
+          random: Random(seed),
+        );
+        final scrambled = Cube.solved().applyMoves(moves);
+        expect(scrambled, isNot(equals(Cube.solved())));
+      }
+    });
+
+    test('solver-compatible scramble keeps requested length', () {
+      final moves =
+          GenerateScramble.executeSolverCompatible(length: 8, random: Random(2));
+      expect(moves.length, 8);
+    });
   });
 }

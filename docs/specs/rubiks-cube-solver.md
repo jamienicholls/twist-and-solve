@@ -1,4 +1,4 @@
-# Rubik's Cube Solver & Learning App — Specification (v1.2)
+# Rubik's Cube Solver & Learning App — Specification (v1.3)
 
 ## 1. Overview
 
@@ -7,7 +7,7 @@ This project implements a full Rubik's Cube domain model, solver, scramble gener
 Goals:
 - Represent a 3×3 Rubik's Cube in code.
 - Validate cube states.
-- Solve valid cube states deterministically.
+- Solve cube states deterministically within bounded search limits.
 - Provide a UI to edit, validate, and solve a cube.
 - Support step‑by‑step playback of the solution.
 - Guide the user through solving via a structured teaching mode.
@@ -116,11 +116,11 @@ Acceptance criteria:
 
 - Validate whether a cube state is:
   - Structurally valid (correct colour counts).
-  - Potentially solvable (basic checks only).
+  - Valid for this app's basic constraints (unique centres + colour counts).
 
 Acceptance criteria:
 - Invalid colour counts rejected.
-- Impossible states rejected.
+- Duplicate centre colours rejected.
 - Valid states pass.
 
 ---
@@ -133,15 +133,17 @@ Compute a deterministic solution sequence for a valid cube.
 Requirements:
 - Use a simple beginner‑style method in v1.
 - Must:
-  - Always solve valid states.
   - Be deterministic.
+  - Use bounded search (phase depth limits + per-phase timeout guard) to keep UI responsive.
+  - Return a clear error when a phase exceeds search bounds.
 - Solver must output:
   - A flat move list.
   - A structured breakdown for teaching mode (D7).
 
 Acceptance criteria:
 - Known scrambles are solved correctly.
-- Invalid or unsolvable cubes return an error.
+- Scramble-generated states are solved reliably.
+- Invalid, unsolved-within-bounds, or unsolvable cubes return an error.
 
 ---
 
@@ -258,8 +260,12 @@ Provide the complete user interface for editing, validating, scrambling, solving
 - Actions:
   - Validate cube (A1)
   - Solve cube (A2)
+  - Teach mode (A2 + D7)
   - Apply random scramble (A3)
   - Reset to solved
+  - Solving UX:
+    - Show a solving progress dialog while search is running
+    - Allow user cancellation of the dialog
 
 #### U2 — Validation Feedback
 - Display validation result from D4
@@ -360,6 +366,7 @@ The UI layer is the user‑facing implementation of D3 and D8.
 
 - Domain logic must be pure Dart.
 - Deterministic behaviour.
+- Solver search must be bounded to avoid unresponsive UI.
 - Fully testable (unit + integration).
 
 ---

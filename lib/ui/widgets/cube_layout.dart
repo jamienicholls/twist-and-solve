@@ -36,31 +36,45 @@ class CubeLayout extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Row(mainAxisSize: MainAxisSize.min, children: [
-          SizedBox(width: _faceWidth),
-          _face(Face.U),
-        ]),
-        Row(mainAxisSize: MainAxisSize.min, children: [
-          _face(Face.L),
-          _face(Face.F),
-          _face(Face.R),
-          _face(Face.B),
-        ]),
-        Row(mainAxisSize: MainAxisSize.min, children: [
-          SizedBox(width: _faceWidth),
-          _face(Face.D),
-        ]),
-      ],
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final effectiveCellSize = _effectiveCellSize(constraints.maxWidth);
+        final faceWidth = _faceWidth(effectiveCellSize);
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Row(mainAxisSize: MainAxisSize.min, children: [
+              SizedBox(width: faceWidth),
+              _face(Face.U, effectiveCellSize),
+            ]),
+            Row(mainAxisSize: MainAxisSize.min, children: [
+              _face(Face.L, effectiveCellSize),
+              _face(Face.F, effectiveCellSize),
+              _face(Face.R, effectiveCellSize),
+              _face(Face.B, effectiveCellSize),
+            ]),
+            Row(mainAxisSize: MainAxisSize.min, children: [
+              SizedBox(width: faceWidth),
+              _face(Face.D, effectiveCellSize),
+            ]),
+          ],
+        );
+      },
     );
   }
 
-  double get _faceWidth => 3 * (cellSize + 2);
+  double _effectiveCellSize(double maxWidth) {
+    if (!maxWidth.isFinite) return cellSize;
+    // Middle row contains 4 faces: 4 * (3 * (cell + margin*2)).
+    final fitByWidth = (maxWidth / 12) - 2;
+    return fitByWidth.clamp(12.0, cellSize);
+  }
 
-  Widget _face(Face face) {
+  double _faceWidth(double currentCellSize) => 3 * (currentCellSize + 2);
+
+  Widget _face(Face face, double currentCellSize) {
     final selIndex =
         (selectedSticker != null && selectedSticker!.$1 == face)
             ? selectedSticker!.$2
@@ -78,7 +92,7 @@ class CubeLayout extends StatelessWidget {
     return LabelledFace(
       cube: cube,
       face: face,
-      cellSize: cellSize,
+      cellSize: currentCellSize,
       selectedIndex: selIndex,
       highlightedIndices: hlIndices?.isEmpty == true ? null : hlIndices,
       onTap: onStickerTap == null ? null : (i) => onStickerTap!(face, i),

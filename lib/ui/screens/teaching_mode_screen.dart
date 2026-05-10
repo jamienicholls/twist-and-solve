@@ -77,10 +77,17 @@ class _TeachingModeScreenState extends State<TeachingModeScreen> {
           Padding(
             padding: const EdgeInsets.only(right: 12),
             child: Center(
-              child: Text(
-                'Stage ${_stageIndex + 1} of $_totalStages',
-                key: const ValueKey('stage_counter'),
-                style: Theme.of(context).textTheme.bodySmall,
+              child: SizedBox(
+                width: 56,
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerRight,
+                  child: Text(
+                    '${_stageIndex + 1}/$_totalStages',
+                    key: const ValueKey('stage_counter'),
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                ),
               ),
             ),
           ),

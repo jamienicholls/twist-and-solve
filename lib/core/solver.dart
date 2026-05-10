@@ -36,6 +36,8 @@ class SolveResult {
 class CubeSolver {
   const CubeSolver._();
 
+  static const Duration _maxPhaseDuration = Duration(seconds: 60);
+
   /// Solves [cube] or throws [ArgumentError] for invalid/unsolvable states.
   static SolveResult solve(Cube cube) {
     // Reject invalid states (D4).
@@ -71,11 +73,11 @@ class CubeSolver {
   }
 
   static int _maxDepth(SolvePhase phase) => switch (phase) {
-        SolvePhase.cross => 8,
-        SolvePhase.firstLayerCorners => 10,
-        SolvePhase.secondLayer => 12,
-        SolvePhase.oll => 10,
-        SolvePhase.pll => 10,
+      SolvePhase.cross => 12,
+      SolvePhase.firstLayerCorners => 16,
+      SolvePhase.secondLayer => 14,
+      SolvePhase.oll => 16,
+      SolvePhase.pll => 14,
       };
 
   // ---------------------------------------------------------------------------
@@ -167,7 +169,7 @@ class CubeSolver {
       };
 
   /// Number of cross edge pieces not yet in place and oriented.
-  /// Admissible: each move fixes at most 2 cross edges, so ceil(n/2) ≤ actual cost.
+  /// ceil(n/2) is admissible: one move can simultaneously fix two cross edges (e.g. U).
   static int _crossHeuristic(Cube cube) {
     var unsolved = 0;
     if (cube.sticker(Face.U, 1) != CubeColour.white ||
@@ -188,7 +190,7 @@ class CubeSolver {
     if (cube.sticker(Face.U, 2) != CubeColour.white) unsolved++;
     if (cube.sticker(Face.U, 6) != CubeColour.white) unsolved++;
     if (cube.sticker(Face.U, 8) != CubeColour.white) unsolved++;
-    return (unsolved + 1) ~/ 2;
+    return unsolved;
   }
 
   static int _secondLayerHeuristic(Cube cube) {
@@ -198,7 +200,7 @@ class CubeSolver {
       if (cube.sticker(f, 3) != cube.sticker(f, 4)) unsolved++;
       if (cube.sticker(f, 5) != cube.sticker(f, 4)) unsolved++;
     }
-    return (unsolved + 1) ~/ 2;
+    return unsolved;
   }
 
   static int _ollHeuristic(Cube cube) {
@@ -207,8 +209,8 @@ class CubeSolver {
     for (var i = 0; i < 9; i++) {
       if (cube.sticker(Face.D, i) != CubeColour.yellow) notYellow++;
     }
-    // Each move can affect at most 4 D-face stickers.
-    return (notYellow + 3) ~/ 4;
+    // Each move affects at most 3 D-face stickers directly.
+    return (notYellow + 2) ~/ 3;
   }
 
   // ---------------------------------------------------------------------------
@@ -253,9 +255,33 @@ class CubeSolver {
     int Function(Cube) heuristic,
     int maxDepth,
   ) {
+    final timer = Stopwatch()..start();
+    final visits = <int>[0];
     for (var depth = 1; depth <= maxDepth; depth++) {
       final result = <Move>[];
-      if (_dfs(start, goal, heuristic, depth, result, null)) return result;
+      // Depth-scoped transposition table: avoid re-exploring equivalent states
+      // with the same or worse remaining depth.
+      final seen = <String, int>{};
+      try {
+        if (_dfs(
+          start,
+          goal,
+          heuristic,
+          depth,
+          result,
+          null,
+          seen,
+          timer,
+          visits,
+        )) {
+          return result;
+        }
+      } on _SearchTimeoutExceeded {
+        throw StateError(
+          'Search timed out while solving this phase. '
+          'The state may be extremely difficult or unsolvable for this solver.',
+        );
+      }
     }
     throw StateError(
       'Could not solve phase within $maxDepth moves. '
@@ -270,13 +296,32 @@ class CubeSolver {
     int remaining,
     List<Move> path,
     MoveFace? lastFace,
+    Map<String, int> seen,
+    Stopwatch timer,
+    List<int> visits,
   ) {
+    visits[0]++;
+    if (visits[0] % 1024 == 0 && timer.elapsed > _maxPhaseDuration) {
+      throw const _SearchTimeoutExceeded();
+    }
+
     if (goal(cube)) return true;
     if (remaining == 0) return false;
+
+    final stateKey = _stateKey(cube);
 
     // Heuristic pruning: if the lower bound exceeds remaining depth, cut.
     final h = heuristic(cube);
     if (h > remaining) return false;
+
+    // Transposition pruning: if we've seen this state (with lastFace context)
+    // before at an equal or greater remaining depth, no need to explore again.
+    final key = '$stateKey|${lastFace?.index ?? -1}';
+    final prevRemaining = seen[key];
+    if (prevRemaining != null && prevRemaining >= remaining) {
+      return false;
+    }
+    seen[key] = remaining;
 
     for (final move in _allMoves) {
       // Same-face pruning.
@@ -288,11 +333,37 @@ class CubeSolver {
 
       final next = cube.applyMove(move);
       path.add(move);
-      if (_dfs(next, goal, heuristic, remaining - 1, path, move.face)) {
+      if (_dfs(
+        next,
+        goal,
+        heuristic,
+        remaining - 1,
+        path,
+        move.face,
+        seen,
+        timer,
+        visits,
+      )) {
         return true;
       }
       path.removeLast();
     }
     return false;
   }
+
+  // Compact deterministic state key for transposition pruning.
+  static String _stateKey(Cube cube) {
+    final sb = StringBuffer();
+    for (final f in Face.values) {
+      for (var i = 0; i < 9; i++) {
+        sb.write(cube.sticker(f, i).index);
+      }
+      sb.write('|');
+    }
+    return sb.toString();
+  }
+}
+
+class _SearchTimeoutExceeded implements Exception {
+  const _SearchTimeoutExceeded();
 }

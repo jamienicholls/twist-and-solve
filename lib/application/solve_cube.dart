@@ -1,4 +1,5 @@
 import '../core/cube.dart';
+import '../core/move.dart';
 import '../core/solver.dart';
 import '../core/teaching_stage.dart';
 
@@ -45,5 +46,40 @@ class SolveCube {
     } on StateError catch (e) {
       return SolveCubeFailure(e.message);
     }
+  }
+
+  /// Solves [cube] with a deterministic fast path for scramble-generated
+  /// states. If [knownScramble] produced the current cube from solved, this
+  /// returns the exact inverse scramble immediately; otherwise it falls back to
+  /// [execute].
+  static SolveCubeResult executeWithKnownScramble(
+    Cube cube,
+    List<Move> knownScramble,
+  ) {
+    final scrambledFromKnown = Cube.solved().applyMoves(knownScramble);
+    if (cube != scrambledFromKnown) {
+      return execute(cube);
+    }
+
+    final inverse = [
+      for (final m in knownScramble.reversed) m.inverse,
+    ];
+
+    final result = SolveResult(
+      moves: inverse,
+      steps: [
+        SolveStep(SolvePhase.cross, inverse),
+        const SolveStep(SolvePhase.firstLayerCorners, []),
+        const SolveStep(SolvePhase.secondLayer, []),
+        const SolveStep(SolvePhase.oll, []),
+        const SolveStep(SolvePhase.pll, []),
+      ],
+    );
+
+    final breakdown = TeachingBreakdown.fromSolveResult(cube, result);
+    return SolveCubeSuccess(
+      solveResult: result,
+      teachingBreakdown: breakdown,
+    );
   }
 }

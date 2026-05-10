@@ -58,8 +58,9 @@ class _SolverPlaybackScreenState extends State<SolverPlaybackScreen> {
       appBar: AppBar(
         title: const Text('Solver Playback'),
         actions: [
-          TextButton.icon(
+          IconButton(
             key: const ValueKey('btn_teaching_mode'),
+            tooltip: 'Teaching',
             onPressed: () => Navigator.push(
               context,
               MaterialPageRoute(
@@ -70,7 +71,6 @@ class _SolverPlaybackScreenState extends State<SolverPlaybackScreen> {
               ),
             ),
             icon: const Icon(Icons.school),
-            label: const Text('Teaching'),
           ),
         ],
       ),
@@ -167,8 +167,10 @@ class _StepControls extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
       color: Theme.of(context).colorScheme.surface,
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+      child: Wrap(
+        alignment: WrapAlignment.spaceEvenly,
+        spacing: 12,
+        runSpacing: 8,
         children: [
           ElevatedButton.icon(
             key: const ValueKey('btn_prev_move'),

@@ -94,21 +94,30 @@ All domain logic must be:
 - Fully unit‑tested  
 - Validated using known scrambles  
 
+Note: the current v1 solver uses bounded phase search (depth limits + timeout guard)
+to keep the UI responsive on difficult manual states.
+
 ---
 
 ## 🛣️ Roadmap
 
-- [ ] D1 — Cube representation  
-- [ ] D2 — Move application  
-- [ ] D3 — State validation  
-- [ ] D4 — Basic solver  
-- [ ] D5 — Scramble generator  
-- [ ] U1 — Flutter project setup  
-- [ ] U2 — Cube editor UI  
-- [ ] U3 — Validation feedback  
-- [ ] U4 — Solver playback  
-- [ ] U5 — Animations  
-- [ ] U6 — Settings  
+- [x] D1 — Cube representation  
+- [x] D2 — Move application  
+- [x] D3 — Cube UI (debug visualiser)  
+- [x] D4 — State validation  
+- [x] D5 — Phase-based deterministic solver  
+- [x] D6 — Scramble generator  
+- [x] D7 — Teaching mode domain model  
+- [x] D8 — Full application UI  
+- [x] A1 — Validate cube use case  
+- [x] A2 — Solve cube use case  
+- [x] A3 — Generate scramble use case  
+- [x] U1 — Cube editor screen  
+- [x] U2 — Validation feedback screen  
+- [x] U3 — Solver playback screen  
+- [x] U4 — Teaching mode screen  
+- [ ] Next — Stronger physical solvability validation (parity/orientation)  
+- [ ] Next — More complete solving strategy for hard manual states  
 
 ---
 
