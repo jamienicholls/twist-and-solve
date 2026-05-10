@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:twist_and_solve/ui/cube_screen.dart';
+import 'package:twist_and_solve/ui/screens/editor_screen.dart';
 
 void main() {
   runApp(const TwistAndSolveApp());
@@ -16,7 +16,7 @@ class TwistAndSolveApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
         useMaterial3: true,
       ),
-      home: const CubeScreen(),
+      home: const EditorScreen(),
     );
   }
 }
