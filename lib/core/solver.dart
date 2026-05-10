@@ -67,7 +67,7 @@ class CubeSolver {
   static List<Move> _solvePhase(Cube cube, SolvePhase phase) {
     final goal = _phaseGoal(phase);
     if (goal(cube)) return const [];
-    return _iddfs(cube, goal, _maxDepth(phase));
+    return _iddfs(cube, goal, _heuristic(phase), _maxDepth(phase));
   }
 
   static int _maxDepth(SolvePhase phase) => switch (phase) {
@@ -155,6 +155,63 @@ class CubeSolver {
   }
 
   // ---------------------------------------------------------------------------
+  // Heuristics (admissible lower bounds on moves remaining per phase)
+  // ---------------------------------------------------------------------------
+
+  static int Function(Cube) _heuristic(SolvePhase phase) => switch (phase) {
+        SolvePhase.cross => _crossHeuristic,
+        SolvePhase.firstLayerCorners => _cornersHeuristic,
+        SolvePhase.secondLayer => _secondLayerHeuristic,
+        SolvePhase.oll => _ollHeuristic,
+        SolvePhase.pll => (c) => c == Cube.solved() ? 0 : 1,
+      };
+
+  /// Number of cross edge pieces not yet in place and oriented.
+  /// Admissible: each move fixes at most 2 cross edges, so ceil(n/2) ≤ actual cost.
+  static int _crossHeuristic(Cube cube) {
+    var unsolved = 0;
+    if (cube.sticker(Face.U, 1) != CubeColour.white ||
+        cube.sticker(Face.F, 1) != cube.sticker(Face.F, 4)) unsolved++;
+    if (cube.sticker(Face.U, 3) != CubeColour.white ||
+        cube.sticker(Face.L, 1) != cube.sticker(Face.L, 4)) unsolved++;
+    if (cube.sticker(Face.U, 5) != CubeColour.white ||
+        cube.sticker(Face.R, 1) != cube.sticker(Face.R, 4)) unsolved++;
+    if (cube.sticker(Face.U, 7) != CubeColour.white ||
+        cube.sticker(Face.B, 1) != cube.sticker(Face.B, 4)) unsolved++;
+    return (unsolved + 1) ~/ 2;
+  }
+
+  static int _cornersHeuristic(Cube cube) {
+    if (!_crossSolved(cube)) return _crossHeuristic(cube) + 1;
+    var unsolved = 0;
+    if (cube.sticker(Face.U, 0) != CubeColour.white) unsolved++;
+    if (cube.sticker(Face.U, 2) != CubeColour.white) unsolved++;
+    if (cube.sticker(Face.U, 6) != CubeColour.white) unsolved++;
+    if (cube.sticker(Face.U, 8) != CubeColour.white) unsolved++;
+    return (unsolved + 1) ~/ 2;
+  }
+
+  static int _secondLayerHeuristic(Cube cube) {
+    if (!_firstLayerSolved(cube)) return 1;
+    var unsolved = 0;
+    for (final f in [Face.F, Face.L, Face.R, Face.B]) {
+      if (cube.sticker(f, 3) != cube.sticker(f, 4)) unsolved++;
+      if (cube.sticker(f, 5) != cube.sticker(f, 4)) unsolved++;
+    }
+    return (unsolved + 1) ~/ 2;
+  }
+
+  static int _ollHeuristic(Cube cube) {
+    if (!_twoLayersSolved(cube)) return 1;
+    var notYellow = 0;
+    for (var i = 0; i < 9; i++) {
+      if (cube.sticker(Face.D, i) != CubeColour.yellow) notYellow++;
+    }
+    // Each move can affect at most 4 D-face stickers.
+    return (notYellow + 3) ~/ 4;
+  }
+
+  // ---------------------------------------------------------------------------
   // IDDFS (Iterative-Deepening Depth-First Search)
   // ---------------------------------------------------------------------------
 
@@ -179,10 +236,26 @@ class CubeSolver {
     Move(MoveFace.B, MoveRotation.double),
   ];
 
-  static List<Move> _iddfs(Cube start, bool Function(Cube) goal, int maxDepth) {
+  // Opposite-face pairs — these faces commute, so we enforce an ordering
+  // to avoid searching both (U then D) and (D then U).
+  static const _oppositeFace = {
+    MoveFace.U: MoveFace.D,
+    MoveFace.D: MoveFace.U,
+    MoveFace.L: MoveFace.R,
+    MoveFace.R: MoveFace.L,
+    MoveFace.F: MoveFace.B,
+    MoveFace.B: MoveFace.F,
+  };
+
+  static List<Move> _iddfs(
+    Cube start,
+    bool Function(Cube) goal,
+    int Function(Cube) heuristic,
+    int maxDepth,
+  ) {
     for (var depth = 1; depth <= maxDepth; depth++) {
       final result = <Move>[];
-      if (_dfs(start, goal, depth, result, null)) return result;
+      if (_dfs(start, goal, heuristic, depth, result, null)) return result;
     }
     throw StateError(
       'Could not solve phase within $maxDepth moves. '
@@ -193,6 +266,7 @@ class CubeSolver {
   static bool _dfs(
     Cube cube,
     bool Function(Cube) goal,
+    int Function(Cube) heuristic,
     int remaining,
     List<Move> path,
     MoveFace? lastFace,
@@ -200,13 +274,23 @@ class CubeSolver {
     if (goal(cube)) return true;
     if (remaining == 0) return false;
 
+    // Heuristic pruning: if the lower bound exceeds remaining depth, cut.
+    final h = heuristic(cube);
+    if (h > remaining) return false;
+
     for (final move in _allMoves) {
-      // Prune: don't repeat the same face consecutively.
+      // Same-face pruning.
       if (move.face == lastFace) continue;
+      // Opposite-face commutative pruning: enforce canonical ordering.
+      if (lastFace != null &&
+          move.face == _oppositeFace[lastFace] &&
+          move.face.index < lastFace.index) continue;
 
       final next = cube.applyMove(move);
       path.add(move);
-      if (_dfs(next, goal, remaining - 1, path, move.face)) return true;
+      if (_dfs(next, goal, heuristic, remaining - 1, path, move.face)) {
+        return true;
+      }
       path.removeLast();
     }
     return false;
